@@ -46,12 +46,12 @@ jobs:
 
     steps: &svc-steps
       # ----- KILL (bash) -----
-      - name: kill (bash)
+      - name: kill deployed service
         if: env.ACTION == 'kill' || env.ACTION == 'restart'
         continue-on-error: true
         shell: bash
         working-directory: ${{ env.SVC_TARGET_DIR }}
-        run: ./man.sh stop
+        run: chmod +x man.sh && ./man.sh stop
 
       # ----- CHECKOUT --------
       - uses: actions/checkout@v4
@@ -61,21 +61,21 @@ jobs:
           lfs: true
           
       # ----- BUILD ------ 
-      - name: kill (cmd)
+      - name: build
         if: env.ACTION == 'kill' || env.ACTION == 'restart'
         shell: bash
         working-directory: ${{ env.SVC_SOURCEFILES_DIR }}
         run: chmod +x gradlew && ./gradlew clean build
         
       # ----- COPY BUILDED FILES ------ 
-      - name: kill (cmd)
+      - name: deploy builded files
         if: env.ACTION == 'kill' || env.ACTION == 'restart'
         shell: bash
         working-directory: ${{ env.SVC_SOURCEFILES_DIR }}
         run: cp -r ${{ env.SVC_SOURCEFILES_DIR }}/build/libs/kotsu.backend.service-0.0.1-SNAPSHOT.jar ${{ env.SVC_TARGET_DIR }}
 
       # ----- START -----------
-      - name: start
+      - name: start deployed service
         if: env.ACTION == 'start' || env.ACTION == 'restart'
         shell: bash
         working-directory: ${{ env.SVC_TARGET_DIR }}
