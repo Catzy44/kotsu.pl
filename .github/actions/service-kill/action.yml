@@ -1,0 +1,15 @@
+#works on both Linux and Windows (runner.os switch)
+name: universal-kill
+inputs:
+  dir:
+    description: relative path to service directory
+    required: true
+  stop:
+    description: command that stops the service (bash or bat)
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: ${{ runner.os == 'Windows' && 'cmd' || 'bash' }}
+      working-directory: ${{ inputs.dir }}
+      run: ${{ inputs.stop }}

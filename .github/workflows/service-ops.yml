@@ -1,0 +1,127 @@
+name: service-ops
+run-name: >-
+  service-ops  -  ${{ 
+    (github.event_name == 'workflow_dispatch' && format('manual - {0} - {1}', inputs.service, inputs.action)) || 
+    (github.event_name == 'push' && contains(github.event.head_commit.message, '#deploy') && 'auto (push) - all - restart') ||
+    (github.event_name == 'pull_request' && contains(github.event.head_commit.message, '#deploy') && 'auto (PR) - all - restart') ||
+    'no operation'
+    }}
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+    inputs:
+      service:
+        description: backend | frontend | all
+        default: all
+        type: choice
+        options: [ all, backend, frontend ]
+
+      action:
+        description: kill | start | restart
+        default: restart
+        type: choice
+        options: [ kill, start, restart ]
+
+env:
+  ACTION: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'restart' || github.event.inputs.action }}
+
+jobs:
+  backend:
+    if: ((github.event_name == 'pull_request' || github.event_name == 'push') && contains(github.event.head_commit.message, '#deploy')) ||
+        github.event.inputs.service == 'all' ||
+        github.event.inputs.service == 'master'
+
+    runs-on: [ self-hosted, Linux, ovh ]
+    concurrency:
+      group: restart-backend
+      cancel-in-progress: true
+
+    env:
+      SVC_SOURCEFILES_DIR: backend
+      SVC_TARGET_DIR: /opt/kotsu.pl
+
+    steps: &svc-steps
+      # ----- KILL (bash) -----
+      - name: kill (bash)
+        if: env.ACTION == 'kill' || env.ACTION == 'restart'
+        continue-on-error: true
+        shell: bash
+        working-directory: ${{ env.SVC_TARGET_DIR }}
+        run: ./man.sh stop
+
+      # ----- CHECKOUT --------
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
+          lfs: true
+          
+      # ----- BUILD ------ 
+      - name: kill (cmd)
+        if: env.ACTION == 'kill' || env.ACTION == 'restart'
+        shell: bash
+        working-directory: ${{ env.SVC_SOURCEFILES_DIR }}
+        run: chmod +x gradlew && ./gradlew clean build
+        
+      # ----- COPY BUILDED FILES ------ 
+      - name: kill (cmd)
+        if: env.ACTION == 'kill' || env.ACTION == 'restart'
+        shell: bash
+        working-directory: ${{ env.SVC_SOURCEFILES_DIR }}
+        run: cp -r ${{ env.SVC_SOURCEFILES_DIR }}/build/libs/kotsu.backend.service-0.0.1-SNAPSHOT.jar ${{ env.SVC_TARGET_DIR }}
+
+      # ----- START -----------
+      - name: start
+        if: env.ACTION == 'start' || env.ACTION == 'restart'
+        shell: bash
+        working-directory: ${{ env.SVC_TARGET_DIR }}
+        run: chmod +x man.sh && ./man.sh start
+  frontend:
+    # te same triggery co pozostałe
+    if: ((github.event_name == 'pull_request' || github.event_name == 'push') && contains(github.event.head_commit.message, '#deploy')) ||
+      github.event.inputs.service == 'all' ||
+      github.event.inputs.service == 'web'
+
+    runs-on: [ self-hosted, Linux, ovh ]          # zapewnij runner z prawem do /var/www
+    concurrency:
+      group: restart-web
+      cancel-in-progress: true
+
+    env:
+      FRONT_DIR: frontend                        # katalog z Vite
+      WWW_ROOT: /var/www/kotsu.pl/public
+
+    steps:
+      # --- CHECKOUT ---
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
+          lfs: true
+
+      # --- BUILD ---
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.FRONT_DIR }}/package-lock.json
+
+      - name: build Vite
+        shell: bash
+        run: |
+          cd "$FRONT_DIR"
+          npm ci
+          npm run build
+
+      # --- DEPLOY ---
+      - name: deploy to webroot
+        shell: bash
+        run: |
+          sudo rm -rf "$WWW_ROOT"/*
+          sudo cp -r "$FRONT_DIR/dist/." "$WWW_ROOT/"
+          sudo chown -R www-data:www-data "$WWW_ROOT"
+          sudo chmod -R 755 "$WWW_ROOT"

@@ -1,0 +1,34 @@
+html,body {
+  padding: 0;
+  margin: 0;
+}
+
+div.application_wrapper {
+  width: 100%;
+  height: 100%;
+
+  .rain_wrapper {
+    cursor: grab;
+
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+    background-color: black;
+
+    font-family: monospace;
+    color:white;
+    white-space: pre;
+    line-height: 8px;
+  }
+
+  .title_wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+
+  }
+}
+

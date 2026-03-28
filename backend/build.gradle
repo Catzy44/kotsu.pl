@@ -1,0 +1,144 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.6'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.hidetake.ssh' version '2.11.2'
+	id 'nu.studer.jooq' version '10.2'
+}
+
+group = 'me.kotsu'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	sourceCompatibility = '21'
+}
+
+tasks.test {
+    enabled = false
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+	//jcenter()
+}
+
+dependencies {
+	//implementation 'me.catzy.invester:invester.kafka.messages'
+
+	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.20.0")
+
+	compileOnly 'org.projectlombok:lombok:1.18.42'
+	annotationProcessor 'org.projectlombok:lombok:1.18.42'
+
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+	implementation 'org.springframework.boot:spring-boot-starter-hateoas'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	/*developmentOnly 'org.springframework.boot:spring-boot-devtools'*/
+//	runtimeOnly 'com.mysql:mysql-connector-j'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	//runtimeOnly 'mysql:mysql-connector-java:8.1.0'
+	//implementation 'com.mysql:mysql-connector-java'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'io.jsonwebtoken:jjwt:0.9.1'
+	implementation 'com.google.code.gson:gson:2.10.1'
+
+	implementation 'org.springframework.kafka:spring-kafka:3.3.1'
+
+	//implementation 'com.rometools:rome:1.18.0'
+	//implementation 'com.unfbx:chatgpt-java:1.1.5'
+
+    implementation "log4j:log4j:1.2.17"
+
+	// Selenium Java bindings
+    implementation 'org.seleniumhq.selenium:selenium-java:4.11.0'
+
+    // (Optional) WebDriverManager for managing browser drivers automatically
+    implementation 'io.github.bonigarcia:webdrivermanager:5.5.1'
+
+    // (Optional) JUnit for testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+
+	jooqGenerator 'com.mysql:mysql-connector-j'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+}
+
+bootRun {
+    environment 'spring.output.ansi.console-available', true
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+processResources.duplicatesStrategy='include'
+
+if (project.hasProperty('rebelAgent')) {
+   bootRun.jvmArgs += rebelAgent
+   //bootRun.jvmArgs += [
+   //         "-Drebel.log=true",
+   //         "-Drebel.log.file=${file("$buildDir/rebel/rebel.log")}"
+   //     ]
+}
+//tasks.register('prepareRebelLogDir') {
+//    doLast { file("$buildDir/rebel").mkdirs() }
+//}
+//bootRun.dependsOn 'prepareRebelLogDir'
+
+jooq {
+	version = '3.19.26'
+	edition = nu.studer.gradle.jooq.JooqEdition.OSS
+
+	configurations {
+		main {
+			generateSchemaSourceOnCompilation = true
+
+			generationTool {
+				logging = org.jooq.meta.jaxb.Logging.WARN
+
+				jdbc {
+					driver = 'com.mysql.cj.jdbc.Driver'
+					url = 'jdbc:mysql://kotsu.pl:3306/invester?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
+					user = 'invester'
+					password = 'QtQ._-9G_x3Eue_F'
+				}
+
+				generator {
+					name = 'org.jooq.codegen.DefaultGenerator'
+
+					database {
+						name = 'org.jooq.meta.mysql.MySQLDatabase'
+						inputSchema = 'invester'
+						excludes = 'flyway_schema_history'
+					}
+
+					generate {
+						records = true
+						immutablePojos = true
+						fluentSetters = true
+					}
+
+					target {
+						packageName = 'me.kotsu.invester.master.generated'
+						directory = 'build/generated-src/jooq/main'
+					}
+				}
+			}
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java.srcDir 'build/generated-src/jooq/main'
+	}
+}
