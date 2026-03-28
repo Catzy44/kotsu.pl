@@ -33,7 +33,7 @@ jobs:
   backend:
     if: ((github.event_name == 'pull_request' || github.event_name == 'push') && contains(github.event.head_commit.message, '#deploy')) ||
         github.event.inputs.service == 'all' ||
-        github.event.inputs.service == 'master'
+        github.event.inputs.service == 'backend'
 
     runs-on: [ self-hosted, Linux, ovh ]
     concurrency:
@@ -84,11 +84,11 @@ jobs:
     # te same triggery co pozostałe
     if: ((github.event_name == 'pull_request' || github.event_name == 'push') && contains(github.event.head_commit.message, '#deploy')) ||
       github.event.inputs.service == 'all' ||
-      github.event.inputs.service == 'web'
+      github.event.inputs.service == 'frontend'
 
     runs-on: [ self-hosted, Linux, ovh ]          # zapewnij runner z prawem do /var/www
     concurrency:
-      group: restart-web
+      group: restart-frontend
       cancel-in-progress: true
 
     env:
